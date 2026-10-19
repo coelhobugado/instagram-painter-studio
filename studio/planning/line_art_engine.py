@@ -360,6 +360,65 @@ class LineArtEngine:
         return best
 
     @staticmethod
+    def _color_clusters(pix, pure=None, max_k: int = 8, tol: float = 6.0):
+        """Separa os pixels de uma forma nas cores dela: o menor k (2..max_k) com erro médio <= tol (Lab).
+
+        Um k fixo juntava cores distintas: no personagem de exemplo (vermelho,
+        azul, preto, amarelo e branco) a estrela amarela virou vermelha. As
+        cores saem só dos pixels de miolo (``pure``): os de transição entre duas
+        cores formavam um grupo próprio, que puxava a estrela para laranja-claro
+        e virava riscos nas bordas. Depois, todo pixel vai para a cor mais próxima.
+        """
+        pix = pix.astype(np.float32)
+        rng = np.random.default_rng(42)
+        base = pix[pure] if pure is not None and np.count_nonzero(pure) >= 200 else pix
+        sample = base if len(base) <= 20000 else base[rng.choice(len(base), 20000, replace=False)]
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5)
+        centers = None
+        for k in range(2, max_k + 1):
+            cv2.setRNGSeed(42)  # prévia reprodutível
+            compactness, _, centers = cv2.kmeans(sample, k, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+            if np.sqrt(compactness / len(sample)) <= tol:
+                break
+        d = ((pix[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
+        return d.argmin(axis=1), centers
+
+    @classmethod
+    def _split_area_and_lines(cls, part):
+        """Núcleo largo da forma (área com anéis) e faixas finas (linhas pelo centro).
+
+        Preencher uma faixa de ~11 px com anéis deixava só sobras curtas no
+        pincel mínimo: o contorno preto do personagem saía pontilhado.
+        """
+        d = max(5, int(round(cls.AREA_MIN_WIDTH_PX * 0.75)) | 1)
+        core = cv2.morphologyEx(part, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d)))
+        n, comp, stats, _ = cv2.connectedComponentsWithStats(core)
+        keep = np.zeros_like(core)
+        for i in range(1, n):
+            if stats[i, cv2.CC_STAT_AREA] >= d * d:
+                keep[comp == i] = 255
+        thin = cv2.bitwise_and(part, cv2.bitwise_not(
+            cv2.dilate(keep, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))))
+        # Manchas compactas (ex.: bolinha da antena) não têm linha central: viram área
+        dist = cv2.distanceTransform(part, cv2.DIST_L2, 5)
+        n, comp, stats, _ = cv2.connectedComponentsWithStats(thin)
+        for i in range(1, n):
+            piece = comp == i
+            radius = float(dist[piece].max())
+            if max(stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]) <= 4.0 * radius:
+                keep[piece] = 255
+                thin[piece] = 0
+        lines = []
+        if np.count_nonzero(thin) >= 30:
+            skel = SkeletonOptimizer.prune_spurs(cls.skeletonize(thin), max_spur_length=4)
+            h, w = part.shape[:2]
+            for path in cls.trace_skeleton_paths(skel, min_length=6.0):
+                widths = [max(1.0, 2.0 * float(dist[min(h - 1, max(0, int(y))), min(w - 1, max(0, int(x)))]))
+                          for x, y in path]
+                lines.append((path, widths))
+        return (keep if np.count_nonzero(keep) else None), lines
+
+    @staticmethod
     def _smooth_labels(labels, window=7):
         """Moda deslizante: tira oscilações de 1–2 pontos antes de cortar o traço."""
         n = len(labels)
@@ -412,29 +471,37 @@ class LineArtEngine:
         lab_img = to_lab(fit_img)
         bg_lab = to_lab(np.uint8([[bg_rgb[::-1]]]))[0, 0]
 
-        # 1. Áreas: formas largas de tinta (separadas por cor) e, no livro de colorir, o miolo entre as linhas
-        areas = []  # (máscara, cor Lab, peso)
+        # Pixels de miolo: vizinhança 5x5 de cor uniforme (fora das transições antisserrilhadas)
+        spread = np.zeros(lab_img.shape[:2], np.float32)
+        for ch in range(3):
+            c = lab_img[..., ch].astype(np.float32)
+            k5 = np.ones((5, 5), np.uint8)
+            spread = np.maximum(spread, cv2.dilate(c, k5) - cv2.erode(c, k5))
+        lab_uniform = spread < 12.0
+
+        # 1. Áreas: formas largas de tinta (separadas por cor) e, no livro de colorir, o miolo entre as linhas.
+        #    Faixas finas de cada cor (ex.: contorno preto grudado no corpo colorido) viram linhas.
+        areas = []  # (máscara da área ou None, cor Lab, peso, [(traço, larguras)])
         if np.count_nonzero(solid_mask):
             n, labels, _stats, _ = cv2.connectedComponentsWithStats(solid_mask)
             for i in range(1, n):
                 comp = (labels == i).astype(np.uint8) * 255
                 pix = lab_img[comp > 0]
                 if len(pix) > 200 and float(np.mean(np.std(pix, axis=0))) > 8.0:
-                    k = 3
-                    _, lbl, centers = cv2.kmeans(pix.astype(np.float32), k, None,
-                                                 (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5),
-                                                 3, cv2.KMEANS_PP_CENTERS)
+                    lbl, centers = cls._color_clusters(pix, pure=lab_uniform[comp > 0])
                     full = np.full(comp.shape, -1, np.int32)
-                    full[comp > 0] = lbl.ravel()
-                    for j in range(k):
+                    full[comp > 0] = lbl
+                    for j in range(len(centers)):
                         part = cv2.morphologyEx((full == j).astype(np.uint8) * 255, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
                         if np.count_nonzero(part) >= 30:
-                            areas.append((part, centers[j], float(np.count_nonzero(part))))
+                            core, part_lines = cls._split_area_and_lines(part)
+                            areas.append((core, centers[j], float(np.count_nonzero(part)), part_lines))
                 else:
-                    areas.append((comp, np.median(pix, axis=0), float(len(pix))))
+                    core, part_lines = cls._split_area_and_lines(comp)
+                    areas.append((core, np.median(pix, axis=0), float(len(pix)), part_lines))
         if fill_regions:
             for mask, lab_color in enclosed_regions(ink_mask, fit_img, bg_rgb, background_painted=background_painted):
-                areas.append((mask, lab_color, float(np.count_nonzero(mask))))
+                areas.append((mask, lab_color, float(np.count_nonzero(mask)), []))
 
         # 2. Linhas: cor e largura medidas ponto a ponto
         per_stroke = []
@@ -467,13 +534,24 @@ class LineArtEngine:
         matched = [tuple(t.get("matched_rgb") or t.get("rgb") or rgbs[k]) for k, t in enumerate(touches)]
         by_light = sorted(range(len(centers)), key=lambda k: -float(centers[k][0]))
 
-        area_strokes, target_fills = {}, []
-        for (mask, _c, _wt), k in zip(areas, labels[area_offset:]):
-            target_fills.append((mask, matched[k]))
-            for lvl, st in fill_region(mask, cls.AREA_LEVELS, thin_level=("min", min_w)).items():
-                area_strokes.setdefault((lvl, k), []).extend(st)
+        area_strokes, target_fills, line_strokes = {}, [], {}
+        grow_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        ink_or_area = ink_mask.copy()
+        for mask, _c, _wt, _l in areas:
+            if mask is not None:
+                ink_or_area = cv2.bitwise_or(ink_or_area, mask)
+        for (mask, _c, _wt, part_lines), k in zip(areas, labels[area_offset:]):
+            if mask is not None and np.count_nonzero(mask):
+                target_fills.append((mask, matched[k]))
+                # A área avança 3 px sobre a tinta vizinha (nunca sobre o fundo): sem isso
+                # o fundo aparecia em frestas entre a área e o contorno. As linhas vêm por cima.
+                grown = cv2.bitwise_and(cv2.dilate(mask, grow_kernel), ink_or_area)
+                for lvl, st in fill_region(grown, cls.AREA_LEVELS, thin_level=("min", min_w)).items():
+                    area_strokes.setdefault((lvl, k), []).extend(st)
+            for stroke, widths in part_lines:
+                wclass = cls._width_class(float(np.median(widths)), min_w)
+                line_strokes.setdefault((cls._line_level(wclass, min_w), k), []).append(stroke)
 
-        line_strokes = {}
         cursor = 0
         # Lascas da borda suavizada das áreas (já cobertas pelo preenchimento) não são linhas
         area_halo = cv2.dilate(solid_mask, np.ones((13, 13), np.uint8)) if np.count_nonzero(solid_mask) else None
