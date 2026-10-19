@@ -23,6 +23,32 @@ def lab_to_rgb(lab: Sequence[float]) -> RGB:
     return tuple(int(round(float(np.clip(v, 0, 1)) * 255)) for v in rgb)
 
 
+def uniform_color_mask(lab_img: np.ndarray, window: int = 5, max_spread: float = 10.0) -> np.ndarray:
+    """Pixels de miolo: a cor varia pouco na vizinhança (fora das transições antisserrilhadas)."""
+    spread = np.zeros(lab_img.shape[:2], np.float32)
+    kernel = np.ones((window, window), np.uint8)
+    for ch in range(3):
+        c = np.ascontiguousarray(lab_img[..., ch], dtype=np.float32)
+        spread = np.maximum(spread, cv2.dilate(c, kernel) - cv2.erode(c, kernel))
+    return spread < max_spread
+
+
+def labels_from_nearest_pure(labels: np.ndarray, pure: np.ndarray) -> np.ndarray:
+    """Cada pixel de transição herda o rótulo do pixel de miolo mais próximo no espaço.
+
+    Pela cor mais parecida, a borda entre cabelo escuro e fundo claro caía num
+    cinza intermediário e virava um halo em volta de tudo; pela vizinhança, a
+    borda se divide entre as duas cores que ela separa.
+    """
+    if pure.all() or not pure.any():
+        return labels
+    src = (~pure).astype(np.uint8)
+    _, idx = cv2.distanceTransformWithLabels(src, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
+    out = labels.copy()
+    out[~pure] = labels[pure][idx[~pure] - 1]  # rótulos de pixel numerados em ordem de leitura
+    return out
+
+
 def ink_mask_from_background(img_bgr: np.ndarray, bg_rgb: RGB, gray_mask: np.ndarray,
                              min_delta_e: float = 22.0) -> np.ndarray:
     """Tinta = pixels escuros (Otsu) OU de cor bem diferente do fundo.

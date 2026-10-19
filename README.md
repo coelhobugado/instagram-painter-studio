@@ -8,7 +8,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Android%20via%20ADB-555)](#-requisitos)
-[![Testes](https://img.shields.io/badge/testes-377%20passando-2ea44f)](#-testes)
+[![Testes](https://img.shields.io/badge/testes-381%20passando-2ea44f)](#-testes)
 [![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
 
 [Recursos](#-recursos) · [Galeria](#%EF%B8%8F-galeria) · [Instalação](#-instalação) · [Como usar](#-como-usar) · [Como funciona](#%EF%B8%8F-como-funciona) · [MCP](#-servidor-mcp-para-agentes-de-ia) · [Limitações](#-limitações-conhecidas)
@@ -167,7 +167,7 @@ python -m studio.mcp.server      # stdio JSON-RPC
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
-São 377 testes que rodam **sem celular**. Eles cobrem planejamento, simulação, QualityGate, segurança fail-closed, interface, MCP e execução de ponta a ponta contra um `FakeADB` que desenha num canvas virtual com as mesmas larguras da prévia.
+São 381 testes que rodam **sem celular**. Eles cobrem planejamento, simulação, QualityGate, segurança fail-closed, interface, MCP e execução de ponta a ponta contra um `FakeADB` que desenha num canvas virtual com as mesmas larguras da prévia.
 
 ---
 

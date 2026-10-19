@@ -40,12 +40,20 @@ def concentric_rings(core: np.ndarray, step: int, min_area: float = 2.0) -> List
         for c in contours:
             pts = [(int(x), int(y)) for x, y in cv2.approxPolyDP(c, 0.8, True).reshape(-1, 2)]
             if len(pts) < 3 or cv2.contourArea(c) < min_area:
-                x, y = pts[0]
-                rings.append([(x, y), (x + 1, y)])  # miolo pequeno: um toque cobre
+                # Miolo pequeno: um toque no centro cobre. Com 4 px de percurso; um
+                # toque de 1 px era descartado pelo sanitizador (< 2,5 px) e deixava
+                # o miolo sem tinta (buraco no meio da gola branca do retrato).
+                x, y = (int(round(v)) for v in np.mean(c.reshape(-1, 2), axis=0))
+                rings.append([(x - 2, y), (x + 2, y)])
             else:
                 rings.append(pts + [pts[0]])
         current = cv2.erode(current, kernel)
     return rings
+
+
+def _is_tap(stroke: Stroke) -> bool:
+    """Toque curto no miolo de um anel (ver concentric_rings)."""
+    return len(stroke) == 2 and abs(stroke[1][0] - stroke[0][0]) + abs(stroke[1][1] - stroke[0][1]) <= 4
 
 
 def _draw(shape, strokes: Sequence[Stroke], width: int) -> np.ndarray:
@@ -72,7 +80,7 @@ def centerline_strokes(mask: np.ndarray, min_length: float = 3.0) -> List[Stroke
         comp = labels == i
         if stats[i, cv2.CC_STAT_AREA] >= 4 and not covered[comp].any():
             cx, cy = (int(round(v)) for v in centroids[i])
-            strokes.append([(cx, cy), (cx + 1, cy)])
+            strokes.append([(cx - 2, cy), (cx + 2, cy)])
     return strokes
 
 
@@ -109,8 +117,21 @@ def fill_region(mask: np.ndarray, brush_levels: Sequence[Tuple[str, float]],
         rings = concentric_rings(core, max(2, int(round(width * 0.75))))
         if not rings:
             continue
-        result.setdefault(level, []).extend(rings)
-        remaining = cv2.bitwise_and(remaining, cv2.bitwise_not(_draw(mask.shape, rings, width)))
+        loops = [s for s in rings if not _is_tap(s)]
+        remaining = cv2.bitwise_and(remaining, cv2.bitwise_not(_draw(mask.shape, loops, width)))
+        # Toques nos miolos pequenos só quando cobrem algo que os anéis deixaram:
+        # a maioria cai em área já pintada e só alongaria a pintura.
+        kept = []
+        disk_area = np.pi * r * r
+        for tap in (s for s in rings if _is_tap(s)):
+            x, y = (int(round(v)) for v in np.mean(np.asarray(tap, np.float32), axis=0))
+            spot = np.zeros_like(remaining)
+            cv2.circle(spot, (x, y), r, 255, -1)
+            if np.count_nonzero(cv2.bitwise_and(spot, remaining)) >= max(leftover_min_area, 0.15 * disk_area):
+                kept.append(tap)
+                remaining = cv2.bitwise_and(remaining, cv2.bitwise_not(spot))
+        if loops or kept:
+            result.setdefault(level, []).extend(loops + kept)
     # Sobras: só as que valem um traço (bordas de 1 px ficam sob o contorno)
     n, labels, stats, _ = cv2.connectedComponentsWithStats(remaining)
     leftover = np.zeros_like(remaining)

@@ -65,7 +65,7 @@ class NegativeShapeEngine:
                 if m["m00"] > 0:
                     cx = int(round(m["m10"] / m["m00"]))
                     cy = int(round(m["m01"] / m["m00"]))
-                    eraser_strokes.append([(cx - 1, cy), (cx + 1, cy)])
+                    eraser_strokes.append([(cx - 2, cy), (cx + 2, cy)])
             else:
                 # Se for linear ou fresta, segue o esqueleto interno
                 skel_local = np.zeros(negative_mask.shape, dtype=np.uint8)

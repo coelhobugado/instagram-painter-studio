@@ -22,6 +22,7 @@ from .. import config
 from ..device.brush_width import FINE_LEVEL, FINE_DRAWN_PX, TRACK_MIN_WIDTH_PX, drawn_width_px, is_fine_level
 from .area_fill import fill_region, estimate_paint_time
 from .color_extraction import (ink_mask_from_background, stroke_colors, region_color, group_colors,
+                               uniform_color_mask, labels_from_nearest_pure,
                                enclosed_regions, lab_to_rgb, to_lab)
 from .pictorial_quality import (
     NegativeSpaceAnalyzer,
@@ -131,9 +132,10 @@ class LineArtEngine:
                 approx = cv2.approxPolyDP(c, 0.8, True).reshape(-1, 2)
                 pts = [(int(x), int(y)) for x, y in approx]
                 if len(pts) == 1 or cv2.contourArea(c) < 2:
-                    # Miolo pequeno demais para um anel: um toque cobre o resto
-                    x, y = pts[0]
-                    strokes.append([(x, y), (x + 1, y)])
+                    # Miolo pequeno demais para um anel: um toque no centro cobre o resto
+                    # (4 px de percurso: com 1 px o sanitizador o descartava)
+                    x, y = (int(round(v)) for v in np.mean(c.reshape(-1, 2), axis=0))
+                    strokes.append([(x - 2, y), (x + 2, y)])
                 else:
                     strokes.append(pts + [pts[0]])
             current = cv2.erode(current, ring_kernel)
@@ -472,12 +474,7 @@ class LineArtEngine:
         bg_lab = to_lab(np.uint8([[bg_rgb[::-1]]]))[0, 0]
 
         # Pixels de miolo: vizinhança 5x5 de cor uniforme (fora das transições antisserrilhadas)
-        spread = np.zeros(lab_img.shape[:2], np.float32)
-        for ch in range(3):
-            c = lab_img[..., ch].astype(np.float32)
-            k5 = np.ones((5, 5), np.uint8)
-            spread = np.maximum(spread, cv2.dilate(c, k5) - cv2.erode(c, k5))
-        lab_uniform = spread < 12.0
+        lab_uniform = uniform_color_mask(lab_img, max_spread=12.0)
 
         # 1. Áreas: formas largas de tinta (separadas por cor) e, no livro de colorir, o miolo entre as linhas.
         #    Faixas finas de cada cor (ex.: contorno preto grudado no corpo colorido) viram linhas.
@@ -491,6 +488,11 @@ class LineArtEngine:
                     lbl, centers = cls._color_clusters(pix, pure=lab_uniform[comp > 0])
                     full = np.full(comp.shape, -1, np.int32)
                     full[comp > 0] = lbl
+                    # Transições herdam a cor do miolo vizinho (sem faixas de cor intermediária)
+                    inside_pure = lab_uniform & (comp > 0)
+                    if inside_pure.any():
+                        spread_lbl = labels_from_nearest_pure(full, inside_pure)
+                        full[comp > 0] = spread_lbl[comp > 0]
                     for j in range(len(centers)):
                         part = cv2.morphologyEx((full == j).astype(np.uint8) * 255, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
                         if np.count_nonzero(part) >= 30:

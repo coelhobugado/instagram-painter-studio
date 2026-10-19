@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 
 from .area_fill import fill_region, estimate_paint_time, centerline_strokes
-from .color_extraction import to_lab, lab_to_rgb
+from .color_extraction import to_lab, lab_to_rgb, uniform_color_mask, labels_from_nearest_pure
 from .path_sanitizer import PathSanitizer
 from ..core.models import CanvasTransform, StrokePlan
 from .. import config
@@ -118,16 +118,31 @@ class FlatIllustrationEngine:
         smooth = cv2.pyrMeanShiftFiltering(fit_img, sp=8, sr=18)
         lab = to_lab(smooth).reshape(-1, 3).astype(np.float32)
 
-        # 1. Cores: k-means em Lab com semente fixa (prévia reprodutível)
+        # 1. Cores: k-means em Lab com semente fixa (prévia reprodutível).
+        #    Treina só nos pixels de miolo (vizinhança de cor uniforme): as transições
+        #    entre cabelo e fundo ocupavam grupos inteiros (halos cinza) e faltavam
+        #    grupos para cores pequenas e distintas (broche vermelho, boca rosa).
         cv2.setRNGSeed(seed)
         k = max(2, min(int(num_colors), 24))
-        # Treina numa amostra (rápido) e rotula todos os pixels pelo centro mais próximo
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.3)
+        pure_mask = uniform_color_mask(lab.reshape(h, w, 3))
+        pure = lab[pure_mask.ravel()]
+        if len(pure) < 5 * k:
+            pure = lab
         rng = np.random.default_rng(seed)
-        sample = lab[rng.choice(len(lab), size=min(len(lab), 60000), replace=False)]
-        _, _, centers = cv2.kmeans(sample, k, None, (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.3),
-                                   3, cv2.KMEANS_PP_CENTERS)
+        sample = pure[rng.choice(len(pure), size=min(len(pure), 60000), replace=False)]
+        _, _, centers = cv2.kmeans(sample, k, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+        # Cores pequenas que nenhum grupo representa (a mais de ~18 ΔE) ganham grupo próprio
+        far = pure[((pure[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2).min(axis=1) > 18.0 ** 2]
+        if len(far) >= min_region_area:
+            extra = int(min(3, max(1, len(far) // (4 * min_region_area))))
+            cv2.setRNGSeed(seed)
+            _, _, extra_centers = cv2.kmeans(far.astype(np.float32), extra, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+            centers = np.vstack([centers, extra_centers])
+            k = len(centers)
         dists = ((lab[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
         labels = dists.argmin(axis=1).reshape(h, w).astype(np.int32)
+        labels = labels_from_nearest_pure(labels, pure_mask)
 
         # 2. Cada grupo vira uma tinta executável; grupos na mesma tinta se unem
         touches, executable = [], []
