@@ -1,0 +1,83 @@
+{
+  "schema_version": 2,
+  "device_id": "SM-A736B",
+  "brushes": {
+    "solid": {
+      "name": "Canetinha Sólida",
+      "is_opaque": true,
+      "levels": {
+        "min": {
+          "slider_y": 1496,
+          "effective_width_px": 10.0,
+          "edge_softness": 0.8,
+          "purpose": "Contornos estruturais, detalhes finos e linhas de expressão"
+        },
+        "med": {
+          "slider_y": 1200,
+          "effective_width_px": 58.0,
+          "edge_softness": 1.4,
+          "purpose": "Meios-tons, texturas e modelação de detalhes médios"
+        },
+        "thick": {
+          "slider_y": 900,
+          "effective_width_px": 104.0,
+          "edge_softness": 2.0,
+          "purpose": "Grandes massas de cor e preenchimento de fundo"
+        },
+        "max": {
+          "slider_y": 900,
+          "effective_width_px": 104.0,
+          "edge_softness": 2.5,
+          "purpose": "Bloqueio rápido de tela inteira"
+        }
+      },
+      "width_calibration": {
+        "measured_at": "2026-10-10",
+        "instagram_version": "451.0.0.0.58",
+        "method": "arrasto da bolinha (injetor), traços retos brancos",
+        "slider_y_to_width_px": [
+          [
+            1571,
+            3
+          ],
+          [
+            1497,
+            10
+          ],
+          [
+            1320,
+            38
+          ],
+          [
+            1183,
+            61
+          ],
+          [
+            1081,
+            74
+          ],
+          [
+            882,
+            106
+          ]
+        ],
+        "note": "Com input tap perto da base a bolinha não se move; use arrasto a partir da bolinha. Abaixo do trilho visível (bolinha em y≈1571, medido em 2026-10-18 a partir de escrita à mão) o traço sai com ~2–4 px a 6–24 px/quadro e ~6 px a 3 px/quadro, contínuo."
+      }
+    },
+    "marker": {
+      "name": "Marcador Translúcido",
+      "is_opaque": false,
+      "base_width_px": 22.0,
+      "edge_softness": 2.2,
+      "purpose": "Degradês, transições suaves e sombreamento acumulativo"
+    },
+    "neon": {
+      "name": "Caneta Neon",
+      "is_opaque": false,
+      "core_width_px": 3.5,
+      "halo_width_px": 18.0,
+      "purpose": "Brilhos especulares e iluminação de destaque",
+      "note": "Pincel padrão ao abrir Desenhar (Instagram 451): miolo branco ~26 px e halo largo que cobre traços anteriores. Selecione a caneta sólida antes de pintar."
+    }
+  }
+}

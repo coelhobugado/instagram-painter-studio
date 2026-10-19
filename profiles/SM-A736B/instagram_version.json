@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "device_id": "SM-A736B",
+  "package_name": "com.instagram.android",
+  "validated_versions": [
+    "320.0.0.35.109",
+    "321.0.0.28.109",
+    "325.0.0.35.91",
+    "451.0.0.0.58"
+  ],
+  "last_validated_version": "451.0.0.0.58",
+  "validation_status": "VALIDATED",
+  "notes": "Caso o número da versão do aplicativo mude além da faixa validada, acionar alerta de revalidação de coordenadas."
+}

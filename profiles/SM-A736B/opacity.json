@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "device_id": "SM-A736B",
+  "tool": "pen_marker",
+  "compositing_model": "C_out = alpha * C_brush + (1 - alpha) * C_background",
+  "pass_alpha_table": {
+    "1": 0.45,
+    "2": 0.70,
+    "3": 0.85,
+    "4": 0.93
+  },
+  "notes": "Valores medidos através de amostragens empíricas de sobreposição de traços no canvas escuro."
+}

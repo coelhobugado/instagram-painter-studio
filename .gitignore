@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches e temporários do projeto
+cache/
+*.tmp
+.tmp_*
+checkpoint.json
+
+# Saídas geradas (inclui prints da tela do celular, que podem conter conversas privadas)
+outputs/
+
+# Logs
+*.log
+task-*.log
+
+# Ambientes virtuais e IDEs
+.env
+.venv
+env/
+venv/
+.idea/
+.vscode/
+.pytest_cache/
+*.egg-info/
+build/
+dist/

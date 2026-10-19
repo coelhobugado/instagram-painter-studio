@@ -1,0 +1,147 @@
+{
+  "schema_version": 3,
+  "device_id": "SM-A736B",
+  "safe_bounds": {
+    "left": 80,
+    "right": 1000,
+    "top": 380,
+    "bottom": 1980,
+    "center_x": 540,
+    "center_y": 1180,
+    "max_width": 800,
+    "max_height": 1200
+  },
+  "ui_anchors": {
+    "chat_plus_button": {
+      "x": 988,
+      "y": 2189
+    },
+    "chat_draw_button": {
+      "x": 811,
+      "y": 2060
+    },
+    "pen_solid": {
+      "x": 287,
+      "y": 318
+    },
+    "pen_solid_alt": {
+      "x": 287,
+      "y": 318
+    },
+    "pen_arrow": {
+      "x": 413,
+      "y": 318
+    },
+    "pen_marker": {
+      "x": 539,
+      "y": 318
+    },
+    "pen_neon": {
+      "x": 665,
+      "y": 318
+    },
+    "pen_eraser": {
+      "x": 791,
+      "y": 318
+    },
+    "button_close": {
+      "x": 64,
+      "y": 2193
+    },
+    "button_undo": {
+      "x": 199,
+      "y": 2193
+    },
+    "button_picker": {
+      "x": 317,
+      "y": 2191
+    },
+    "button_done": {
+      "x": 1028,
+      "y": 2194
+    },
+    "slider_thickness": {
+      "x": 39,
+      "min_y_start": 1450,
+      "min_y_end": 1520,
+      "min_y": 1496,
+      "medium_y": 1200,
+      "thick_y": 900,
+      "track_top_y": 880,
+      "track_bottom_y": 1500
+    },
+    "palette_base": {
+      "y": 2184,
+      "button_white": {
+        "x": 411,
+        "y": 2184
+      },
+      "button_blue": {
+        "x": 486,
+        "y": 2184
+      },
+      "button_green": {
+        "x": 561,
+        "y": 2184
+      },
+      "button_yellow": {
+        "x": 636,
+        "y": 2184
+      },
+      "button_orange": {
+        "x": 711,
+        "y": 2184
+      },
+      "button_red": {
+        "x": 786,
+        "y": 2184
+      },
+      "button_pink": {
+        "x": 861,
+        "y": 2184
+      },
+      "button_purple": {
+        "x": 936,
+        "y": 2184
+      },
+      "button_yellow_anchor": {
+        "x": 636,
+        "y": 2184
+      },
+      "dark_swatch": {
+        "x": 936,
+        "y": 2184
+      }
+    },
+    "palette_swipes": {
+      "reset_to_first_page": {
+        "from": {
+          "x": 450,
+          "y": 2184
+        },
+        "to": {
+          "x": 800,
+          "y": 2184
+        }
+      },
+      "next_page": {
+        "from": {
+          "x": 850,
+          "y": 2184
+        },
+        "to": {
+          "x": 500,
+          "y": 2184
+        }
+      }
+    },
+    "spectrum_popup": {
+      "x_min": 375,
+      "x_max": 974,
+      "y_top": 2133,
+      "y_center": 2184,
+      "y_bottom": 2274,
+      "note": "Seletor 2D que substitui a fileira de cores enquanto o dedo segue pressionado numa bolinha."
+    }
+  }
+}

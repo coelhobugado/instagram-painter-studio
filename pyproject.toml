@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "instagram-painter-studio"
+version = "3.1.0"
+description = "Instagram Painter Studio v3.1 Enterprise - Autonomous Direct Drawing Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Instagram Painter Project Team" }
+]
+dependencies = [
+    "opencv-contrib-python>=4.8.0",
+    "numpy>=1.24.0,<3.0.0",
+    "Pillow>=9.5.0",
+    "customtkinter>=5.2.0",
+    "scipy>=1.10.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0"
+]
+
+[project.scripts]
+instagram-painter = "studio.app_gui:main"
+instagram-painter-mcp = "studio.mcp.server:main"
+
+[tool.setuptools.package-data]
+# Injetor de toques enviado ao aparelho (app_process).
+"studio.device" = ["injector/*.jar", "injector/*.java"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

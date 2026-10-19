@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "device_id": "SM-A736B",
+  "device_name": "Samsung Galaxy A73 5G",
+  "manufacturer": "Samsung",
+  "screen_resolution": {
+    "width": 1080,
+    "height": 2400,
+    "density_dpi": 450,
+    "refresh_rate_hz": 120,
+    "effective_input_rate_hz": 60
+  },
+  "android_version": 16,
+  "one_ui_version": null,
+  "input_method": "app_process_injector",
+  "created_at": "2026-09-20T10:30:00Z",
+  "status": "VALIDATED",
+  "notes": "Instagram consome ~1 ponto por quadro (16,7 ms). sendevent bloqueado pelo SELinux; input motionevent em processos separados perde MOVEs.",
+  "validated_at": "2026-10-10"
+}
